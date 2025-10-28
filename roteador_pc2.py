@@ -32,6 +32,8 @@ class Servidor:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_socket.bind((HOST, PORT))
         self.server_socket.settimeout(TIMEOUT_TIMER)
+        self.buffer = None
+        self.count = 0  # Para reordenação simples
         print(f"Servidor (Roteador B) iniciado em {HOST}:{PORT}")
         print(f"Operação atual: {op_atual.name}")
 
@@ -39,20 +41,15 @@ class Servidor:
         try:
             while True:
                 bytes_recebidos, remetente = self.server_socket.recvfrom(BUFFER_SIZE)
-                
-                # Aprende os endereços dos PCs
                 if self.pc1_addr is None:
                     self.pc1_addr = remetente
                     print(f"[Roteador] PC1 (Remetente) registrado: {remetente}")
-                    continue # Ignora o primeiro pacote (é só para registro)
+
                 elif self.pc2_addr is None and self.pc1_addr != remetente:
                     self.pc2_addr = remetente
                     print(f"[Roteador] PC2 (Destinatário) registrado: {remetente}")
-                    continue # Ignora o primeiro pacote (é só para registro)
-                
-                # Uma vez que ambos estão registrados, começa a encaminhar
-                if self.pc1_addr and self.pc2_addr:
-                    self.receber_mensagem(bytes_recebidos, remetente)
+
+                self.receber_mensagem(bytes_recebidos, remetente)
 
         except socket.timeout:
             print(f"[Roteador] Servidor inativo a muito tempo, encerrando...")
@@ -65,7 +62,8 @@ class Servidor:
 
     def receber_mensagem(self, bytes_recebidos, addr):
         # !!! BUG FIX: 'segmento' deve ser definido a partir dos bytes recebidos
-        segmento = bytes_recebidos
+        print(f"[Roteador] Mensagem recebida de {addr}: {repr(bytes_recebidos[12:60])}...")
+        # print(bytes_recebidos)
         
         try:
             if not bytes_recebidos:
@@ -75,36 +73,41 @@ class Servidor:
             match (op_atual):
                 case Operations.NORMAL:
                     # Envio normal
-                    self.enviar_mensagem(addr, segmento)
+                    self.enviar_mensagem(addr, bytes_recebidos)
                 case Operations.PERDA:
                     # Não envia a mensagem
                     print(f"--- [Roteador] PACOTE PERDIDO de {addr} ---")
                     pass  
                 case Operations.CORRUPÇÃO:
                     # Corrompe um byte aleatório no payload
-                    segmento_corrompido = bytearray(segmento)
+                    segmento_corrompido = bytearray(bytes_recebidos)
                     if len(segmento_corrompido) > 5: # Garante que há dados para corromper
                         # Corrompe um byte (ex: depois de 'SEQ:N:' ou 'ACK:N')
                         idx_corromper = random.randint(0, len(segmento_corrompido) - 1)
                         byte_original = segmento_corrompido[idx_corromper]
                         segmento_corrompido[idx_corromper] = random.randint(0, 255)
-                        print(f"--- [Roteador] PACOTE CORROMPIDO de {addr} (Byte {idx_corromper} de {byte_original} para {segmento_corrompido[idx_corromper]}) ---")
+                        print(f"--- [Roteador] CORROMPIDO segmento de número {bytes_recebidos[0:32]}")
                     self.enviar_mensagem(addr, segmento_corrompido)
                 case Operations.ATRASO:
                     # Atraso de 1 segundo
                     print(f"--- [Roteador] PACOTE ATRASADO de {addr} ---")
                     time.sleep(1)
-                    self.enviar_mensagem(addr, segmento)
+                    self.enviar_mensagem(addr, bytes_recebidos)
                 case Operations.DUPLICAÇÃO:
                     # Envia o pacote duas vezes
                     print(f"--- [Roteador] PACOTE DUPLICADO de {addr} ---")
-                    self.enviar_mensagem(addr, segmento)
+                    self.enviar_mensagem(addr, bytes_recebidos)
                     time.sleep(0.1) # Pequeno delay para o duplicado
-                    self.enviar_mensagem(addr, segmento)
+                    self.enviar_mensagem(addr, bytes_recebidos)
                 case Operations.REORDENAÇÃO:
-                    # TODO: Implementar lógica de reordenação (requer buffer)
-                    print(f"[Roteador] REORDENAÇÃO não implementado. Enviando normalmente.")
-                    self.enviar_mensagem(addr, segmento)
+                    if self.count == 0:
+                        self.buffer = bytes_recebidos  
+                        self.count = 1
+                        return
+                    else:
+                        self.enviar_mensagem(addr, self.buffer)
+                        self.count = 0
+                    self.enviar_mensagem(addr, bytes_recebidos)
 
         except Exception as e:
             print(f"[Roteador] Erro em receber_mensagem: {e}")
@@ -147,8 +150,8 @@ class Servidor:
             
             if dest:
                 self.server_socket.sendto(mensagem, dest)
-                # Usar repr() para imprimir bytes de forma segura (UTF-8 pode falhar se corrompido)
-                print(f"[Roteador] Mensagem de {addr} encaminhada para {dest}: {repr(mensagem[12:60])}...")
+            # Usar repr() para imprimir bytes de forma segura (UTF-8 pode falhar se corrompido)
+            print(f"[Roteador] Mensagem de {addr} encaminhada para {dest}: {repr(mensagem[12:60])}...")
             # else:
             #    print(f"[Roteador] Destinatário desconhecido para {addr}. Pacote descartado.")
         except Exception as e:
