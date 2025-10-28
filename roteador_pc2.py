@@ -85,7 +85,7 @@ class Servidor:
                     segmento_corrompido = bytearray(segmento)
                     if len(segmento_corrompido) > 5: # Garante que há dados para corromper
                         # Corrompe um byte (ex: depois de 'SEQ:N:' ou 'ACK:N')
-                        idx_corromper = random.randint(5, len(segmento_corrompido) - 1)
+                        idx_corromper = random.randint(0, len(segmento_corrompido) - 1)
                         byte_original = segmento_corrompido[idx_corromper]
                         segmento_corrompido[idx_corromper] = random.randint(0, 255)
                         print(f"--- [Roteador] PACOTE CORROMPIDO de {addr} (Byte {idx_corromper} de {byte_original} para {segmento_corrompido[idx_corromper]}) ---")
@@ -148,7 +148,7 @@ class Servidor:
             if dest:
                 self.server_socket.sendto(mensagem, dest)
                 # Usar repr() para imprimir bytes de forma segura (UTF-8 pode falhar se corrompido)
-                print(f"[Roteador] Mensagem de {addr} encaminhada para {dest}: {repr(mensagem[:60])}...")
+                print(f"[Roteador] Mensagem de {addr} encaminhada para {dest}: {repr(mensagem[12:60])}...")
             # else:
             #    print(f"[Roteador] Destinatário desconhecido para {addr}. Pacote descartado.")
         except Exception as e:
