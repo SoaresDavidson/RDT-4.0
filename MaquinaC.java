@@ -73,10 +73,11 @@ public class MaquinaC {
     * @param b Palavra B de 16 bits
     * @return A soma de complemento de um (16 bits)
     */
-    private static int onesComplementSum(int a, int b) {
-        int soma = a + b;
-        return (soma & 0xFFFF) + (soma >> 16);
-    }
+   private static int binarySum(int a, int b) {
+    int soma = a + b;
+    soma = (soma & 0xFFFF) + (soma >> 16);
+    return soma & 0xFFFF;
+}
 
     /**
      * Calcula o checksum para um array de bytes
@@ -102,10 +103,11 @@ public class MaquinaC {
             }
 
             // Acumula a soma
-            result = onesComplementSum(result, word);
+            result = binarySum(result, word);
 
             i += 2; // Move para a próxima palavra de 16 bits
         }
+        System.out.println(result);
         return result;
     }
 
