@@ -23,30 +23,50 @@ public class MaquinaC {
     private static byte[] makeAckPacket(int ackNum) {
         int seq = -1; // -1 para indicar que não é um pacote de dados
         int flag_ack = 1; // Flag 1 para indicar que é um ACK
+        int tamanho_payload = 0; // 0 para ACK (sem payload)
 
-    // Monta o cabeçalho de 12 bytes
-        byte[] header = new byte[12];
+        // O cabeçalho final terá 12 bytes
+        byte[] header_temp = new byte[12];
 
-        // Seq
-        header[0] = (byte)(seq >> 24);
-        header[1] = (byte)(seq >> 16);
-        header[2] = (byte)(seq >> 8);
-        header[3] = (byte)(seq);
+        // 1. Monta o cabeçalho com o campo Checksum (Bytes 8 e 9) ZERADO para o cálculo
 
-        // Ack
-        header[4] = (byte)(ackNum >> 24);
-        header[5] = (byte)(ackNum >> 16);
-        header[6] = (byte)(ackNum >> 8);
-        header[7] = (byte)(ackNum);
+        // Seq (4 bytes: 0-3)
+        header_temp[0] = (byte)(seq >> 24);
+        header_temp[1] = (byte)(seq >> 16);
+        header_temp[2] = (byte)(seq >> 8);
+        header_temp[3] = (byte)(seq);
 
-        // Flag
-        int bits_flag = (flag_ack & 1) << 31;
-        header[8] = (byte)(bits_flag >> 24);
-        header[9] = (byte)(bits_flag >> 16);
-        header[10] = (byte)(bits_flag >> 8);
-        header[11] = (byte)(bits_flag);
+        // Ack (4 bytes: 4-7)
+        header_temp[4] = (byte)(ackNum >> 24);
+        header_temp[5] = (byte)(ackNum >> 16);
+        header_temp[6] = (byte)(ackNum >> 8);
+        header_temp[7] = (byte)(ackNum);
 
-        return header;
+        // Checksum (2 bytes: 8-9) -> ZERADOS para o cálculo
+        header_temp[8] = (byte)0;
+        header_temp[9] = (byte)0;
+
+        // Tamanho do Payload (1 byte: 10)
+        header_temp[10] = (byte)(tamanho_payload);
+
+        // Flags (1 byte: 11) - O bit mais significativo é o ACK na estrutura do Python (0x80)
+        // O bit ACK (flag_ack=1) é movido para o MSB do byte 11
+        int flag_byte = flag_ack << 7; 
+        header_temp[11] = (byte)flag_byte;
+
+        // 2. Calcula o checksum de todo o cabeçalho (com checksum zerado)
+        // Assume que calculateChecksum está corretamente implementado no MaquinaC.java
+        int checksum_val = calculateChecksum(header_temp, 12);
+
+        // 3. Monta o pacote final, INSERINDO o checksum calculado nos Bytes 8 e 9
+        byte[] final_packet = header_temp;
+    
+        // Checksum (high byte)
+        final_packet[8] = (byte)(checksum_val >> 8);
+        // Checksum (low byte)
+        final_packet[9] = (byte)checksum_val;
+
+        return final_packet;
     }
 
     // Envia um pacote ACK para o roteador
