@@ -1,17 +1,17 @@
-from functs import seg_message, decode_segments
-import Janela
-# message = input("digite sua mensagem: ")
+from JanelaJoao import Envio
 
+IP = '127.0.0.1'
+PORTA = 55555
 
-# segments = seg_message(message)
-envio = Janela.EnviadorSR('127.0.0.1', 55555)
+remetente = Envio(IP,PORTA)
+
 try:
-    while True:
-        mensagem = input("Digite sua mensagem: ")
-        envio.enviar_e_esperar(mensagem)
-        input("enviar?")
-finally:
-    envio.fechar()
+    message = input("Digite sua mensagem:  ")
 
-# print(segments[0])
-# print(decode_segments(segments))
+    remetente.enfileirar_mensagens([message])
+    remetente.esperar_confirmacao_total()
+except KeyboardInterrupt:
+    print("Envio interompido")
+finally:
+    remetente.fechar()
+
