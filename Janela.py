@@ -10,7 +10,7 @@ import time
 IP_ROTEADOR = '127.0.0.1'
 PORTA_ROTEADOR = 55555
 JANELA = 5
-TEMPO_ESPERA = 1.0
+TEMPO_ESPERA = 5.0
 TAM_DADOS = 1024
 
 def int_para_bytes(valor, n_bytes=4):
@@ -172,14 +172,3 @@ class EnviadorSR:
             for seq in list(self.timers.keys()):
                 self.parar_timer(seq)
         print("[ENVIADOR] Encerrado.")
-
-# --------------------------- Exemplo ---------------------------
-
-if __name__ == '__main__':
-    envio = EnviadorSR(IP_ROTEADOR, PORTA_ROTEADOR)
-    try:
-        msgs = [f"Mensagem {i}" for i in range(8)]
-        envio.enviar_e_esperar(msgs)
-        time.sleep(0.5)
-    finally:
-        envio.fechar()
