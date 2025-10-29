@@ -1,4 +1,4 @@
-from JanelaJoao import Envio
+from Janela import Envio
 
 IP = '127.0.0.1'
 PORTA = 55555
